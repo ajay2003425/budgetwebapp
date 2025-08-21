@@ -1,0 +1,22 @@
+{
+  "name": "budgeting-platform",
+  "version": "1.0.0",
+  "description": "Role-Based Budgeting Platform",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "backend:dev": "cd backend && npm run dev",
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:install": "cd backend && npm install",
+    "frontend:install": "cd frontend && npm install",
+    "install:all": "npm run backend:install && npm run frontend:install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": ["budgeting", "rbac", "finance", "expenses"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
