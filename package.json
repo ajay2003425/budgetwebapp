@@ -13,10 +13,20 @@
     "build": "cd frontend && npm run build",
     "start": "cd backend && npm start"
   },
-  "keywords": ["budgeting", "rbac", "finance", "expenses"],
+  "keywords": [
+    "budgeting",
+    "rbac",
+    "finance",
+    "expenses"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "react-dropzone": "^14.3.8",
+    "react-hook-form": "^7.62.0",
+    "recharts": "^3.1.2"
   }
 }
