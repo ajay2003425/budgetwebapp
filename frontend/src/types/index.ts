@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   role: 'ADMIN' | 'MANAGER' | 'USER';
-  departmentId?: string;
+  departmentId?: string | Department;
   isActive: boolean;
   createdAt: string;
 }

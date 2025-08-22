@@ -18,7 +18,8 @@ import { formatCurrency, formatDate } from '../utils/format';
 
 export const Expenses: React.FC = () => {
   const { user } = useAuth();
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [allExpenses, setAllExpenses] = useState<Expense[]>([]); // Store all expenses
+  const [expenses, setExpenses] = useState<Expense[]>([]); // Filtered expenses for display
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -38,7 +39,45 @@ export const Expenses: React.FC = () => {
 
   useEffect(() => {
     loadExpenses();
-  }, [selectedBudget, selectedStatus, searchTerm, pagination.page]);
+  }, []);
+
+  // Client-side filtering effect
+  useEffect(() => {
+    applyFilters();
+  }, [selectedBudget, selectedStatus, searchTerm, allExpenses]);
+
+  const applyFilters = () => {
+    let filtered = [...allExpenses];
+
+    // Budget filter
+    if (selectedBudget) {
+      filtered = filtered.filter(expense => expense.budgetId?._id === selectedBudget);
+    }
+
+    // Status filter
+    if (selectedStatus) {
+      filtered = filtered.filter(expense => expense.status === selectedStatus);
+    }
+
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(expense =>
+        expense.description.toLowerCase().includes(search) ||
+        expense.budgetId?.name?.toLowerCase().includes(search) ||
+        expense.budgetId?.departmentId?.name?.toLowerCase().includes(search) ||
+        expense.userId?.name?.toLowerCase().includes(search)
+      );
+    }
+
+    setExpenses(filtered);
+    setPagination(prev => ({
+      ...prev,
+      total: filtered.length,
+      totalPages: Math.ceil(filtered.length / prev.limit),
+      page: 1
+    }));
+  };
 
   const loadBudgets = async () => {
     try {
@@ -52,22 +91,11 @@ export const Expenses: React.FC = () => {
   const loadExpenses = async () => {
     setLoading(true);
     try {
-      const params: any = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
-
-      if (selectedBudget) params.budgetId = selectedBudget;
-      if (selectedStatus) params.status = selectedStatus;
-      if (searchTerm) params.search = searchTerm;
-
-      const response: PaginatedResponse<Expense> = await expenseService.list(params);
-      setExpenses(response.data || []);
-      setPagination(prev => ({
-        ...prev,
-        total: response.total,
-        totalPages: response.totalPages,
-      }));
+      // Fetch all expenses without filters for client-side filtering
+      const response: PaginatedResponse<Expense> = await expenseService.list({
+        limit: 1000 // Get all expenses
+      });
+      setAllExpenses(response.data || []);
     } catch (error) {
       console.error('Failed to load expenses:', error);
     } finally {
@@ -148,7 +176,6 @@ export const Expenses: React.FC = () => {
             setSearchTerm('');
             setSelectedBudget('');
             setSelectedStatus('');
-            setPagination(prev => ({ ...prev, page: 1 }));
           }}>
             <Filter className="w-4 h-4 mr-2" />
             Clear
@@ -187,7 +214,9 @@ export const Expenses: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {expenses.map((expense) => (
+              {expenses
+                .slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit)
+                .map((expense) => (
                 <TableRow key={expense._id}>
                   <TableCell>
                     {formatDate(expense.createdAt)}
@@ -222,7 +251,7 @@ export const Expenses: React.FC = () => {
                   <TableCell>
                     {expense.receiptUrl ? (
                       <a
-                        href={`${import.meta.env.VITE_API_BASE_URL}${expense.receiptUrl}`}
+                        href={`${(import.meta as any).env.VITE_API_BASE_URL}${expense.receiptUrl}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 text-sm"

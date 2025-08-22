@@ -51,6 +51,10 @@ export const UserForm: React.FC<UserFormProps> = ({
   const selectedRole = watch('role');
 
   const onSubmit = async (data: UserFormData) => {
+    console.log('Submitting user form:', data);
+    console.log('Is editing:', isEditing);
+    console.log('User ID:', user?._id);
+    
     setLoading(true);
     try {
       if (isEditing) {
@@ -64,8 +68,10 @@ export const UserForm: React.FC<UserFormProps> = ({
           updateData.departmentId = data.departmentId || undefined;
         }
         
+        console.log('Updating user with data:', updateData);
         await userService.update(user._id, updateData);
       } else {
+        console.log('Creating new user with data:', data);
         await authService.register({
           name: data.name,
           email: data.email,
@@ -74,9 +80,12 @@ export const UserForm: React.FC<UserFormProps> = ({
           departmentId: data.departmentId || undefined,
         });
       }
+      console.log('User form submission successful');
       onSuccess();
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to save user';
+      console.error('User form submission error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save user';
+      console.log('Setting error message:', errorMessage);
       setError('root', { message: errorMessage });
     } finally {
       setLoading(false);

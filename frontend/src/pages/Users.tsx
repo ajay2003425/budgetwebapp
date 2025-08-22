@@ -16,14 +16,17 @@ import { UserForm } from '../components/users/UserForm';
 import { formatDate, getInitials } from '../utils/format';
 
 export const Users: React.FC = () => {
-  const { hasRole } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const { hasRole, user: currentUser } = useAuth();
+  const [allUsers, setAllUsers] = useState<User[]>([]); // Store all users
+  const [users, setUsers] = useState<User[]>([]); // Filtered users for display
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -33,11 +36,16 @@ export const Users: React.FC = () => {
 
   useEffect(() => {
     loadDepartments();
+    loadUsers(); // Load all users initially
   }, []);
 
+  // Apply filter when selectedRole changes
   useEffect(() => {
-    loadUsers();
-  }, [selectedRole, pagination.page]);
+    if (allUsers.length > 0) {
+      console.log('🔄 Role filter changed, applying client-side filter...');
+      applyClientFilter(allUsers, selectedRole);
+    }
+  }, [selectedRole, allUsers]);
 
   const loadDepartments = async () => {
     try {
@@ -49,27 +57,66 @@ export const Users: React.FC = () => {
   };
 
   const loadUsers = async () => {
+    console.log('🔄 Loading all users...');
     setLoading(true);
+    setFeedbackMessage(null);
+    
     try {
-      const params: any = {
-        page: pagination.page,
-        limit: pagination.limit,
+      // Load ALL users without filtering (let backend return all)
+      const params = {
+        page: 1,
+        limit: 1000, // Get all users
       };
 
-      if (selectedRole) params.role = selectedRole;
-
+      console.log('📤 API call params:', params);
       const response: PaginatedResponse<User> = await userService.list(params);
-      setUsers(response.data || []);
-      setPagination(prev => ({
-        ...prev,
-        total: response.total,
-        totalPages: response.totalPages,
-      }));
+      
+      console.log('📥 Received users:', response.data?.length || 0);
+      console.log('📋 All user roles:', response.data?.map(u => u.role) || []);
+      
+      const fetchedUsers = response.data || [];
+      setAllUsers(fetchedUsers);
+      
+      // Apply client-side filtering
+      applyClientFilter(fetchedUsers, selectedRole);
+      
     } catch (error) {
-      console.error('Failed to load users:', error);
+      console.error('❌ Failed to load users:', error);
+      setFeedbackMessage({ 
+        type: 'error', 
+        message: 'Failed to load users. Please refresh the page.' 
+      });
+      setTimeout(() => setFeedbackMessage(null), 5000);
     } finally {
       setLoading(false);
     }
+  };
+
+  const applyClientFilter = (userList: User[], roleFilter: string) => {
+    console.log('🔍 Applying client-side filter:', roleFilter);
+    console.log('🔍 Total users to filter:', userList.length);
+    
+    let filteredUsers = userList;
+    
+    if (roleFilter && roleFilter.trim() !== '') {
+      filteredUsers = userList.filter(user => {
+        const matches = user.role === roleFilter;
+        console.log(`🔍 User ${user.name} (${user.role}) matches filter ${roleFilter}:`, matches);
+        return matches;
+      });
+    }
+    
+    console.log('✅ Filtered users count:', filteredUsers.length);
+    console.log('✅ Filtered user roles:', filteredUsers.map(u => u.role));
+    
+    setUsers(filteredUsers);
+    
+    // Update pagination for display
+    setPagination(prev => ({
+      ...prev,
+      total: filteredUsers.length,
+      totalPages: Math.ceil(filteredUsers.length / prev.limit),
+    }));
   };
 
   const handleCreate = () => {
@@ -78,6 +125,8 @@ export const Users: React.FC = () => {
   };
 
   const handleEdit = (user: User) => {
+    console.log('Editing user:', user);
+    console.log('Current user has edit permissions:', hasRole('ADMIN') || hasRole('MANAGER'));
     setEditingUser(user);
     setShowForm(true);
   };
@@ -86,9 +135,13 @@ export const Users: React.FC = () => {
     setActionLoading(userId);
     try {
       await userService.activate(userId);
-      loadUsers();
+      setFeedbackMessage({ type: 'success', message: 'User activated successfully!' });
+      loadUsers(); // Reload all users
+      setTimeout(() => setFeedbackMessage(null), 3000);
     } catch (error) {
       console.error('Failed to activate user:', error);
+      setFeedbackMessage({ type: 'error', message: 'Failed to activate user. Please try again.' });
+      setTimeout(() => setFeedbackMessage(null), 3000);
     } finally {
       setActionLoading(null);
     }
@@ -100,18 +153,37 @@ export const Users: React.FC = () => {
     setActionLoading(userId);
     try {
       await userService.deactivate(userId);
-      loadUsers();
+      setFeedbackMessage({ type: 'success', message: 'User deactivated successfully!' });
+      loadUsers(); // Reload all users
+      setTimeout(() => setFeedbackMessage(null), 3000);
     } catch (error) {
       console.error('Failed to deactivate user:', error);
+      setFeedbackMessage({ type: 'error', message: 'Failed to deactivate user. Please try again.' });
+      setTimeout(() => setFeedbackMessage(null), 3000);
     } finally {
       setActionLoading(null);
     }
   };
 
+  const handleRoleFilterChange = (newRole: string) => {
+    console.log('🔄 Role filter changed from:', `"${selectedRole}"`, 'to:', `"${newRole}"`);
+    setSelectedRole(newRole);
+  };
+
+  const handleClearFilters = () => {
+    console.log('🧹 Clearing filters');
+    setSelectedRole('');
+  };
+
   const handleFormSuccess = () => {
+    console.log('User form submitted successfully');
     setShowForm(false);
     setEditingUser(null);
-    loadUsers();
+    setFeedbackMessage({ type: 'success', message: 'User saved successfully!' });
+    loadUsers(); // Reload all users
+    
+    // Clear feedback after 3 seconds
+    setTimeout(() => setFeedbackMessage(null), 3000);
   };
 
   const handleFormCancel = () => {
@@ -127,21 +199,48 @@ export const Users: React.FC = () => {
     }
   };
 
-  const getDepartmentName = (departmentId?: string) => {
+  const getDepartmentName = (departmentId?: string | any) => {
+    console.log('getDepartmentName called with:', departmentId, 'type:', typeof departmentId);
+    
     if (!departmentId) return '-';
-    const department = departments.find(d => d._id === departmentId);
-    return department?.name || '-';
+    
+    // If departmentId is an object (populated), get the name
+    if (typeof departmentId === 'object' && departmentId.name) {
+      console.log('Found department name:', departmentId.name);
+      return departmentId.name;
+    }
+    
+    // If departmentId is a string, find it in the departments array
+    if (typeof departmentId === 'string') {
+      const department = departments.find(d => d._id === departmentId);
+      console.log('Found department by ID:', department);
+      return department?.name || '-';
+    }
+    
+    console.log('Returning default dash');
+    return '-';
   };
 
   const roleOptions = [
     { value: '', label: 'All Roles' },
-    { value: 'ADMIN', label: 'Admin' },
-    { value: 'MANAGER', label: 'Manager' },
     { value: 'USER', label: 'User' },
+    { value: 'MANAGER', label: 'Manager' },
+    { value: 'ADMIN', label: 'Admin' },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Feedback Message */}
+      {feedbackMessage && (
+        <div className={`p-4 rounded-lg border ${
+          feedbackMessage.type === 'success' 
+            ? 'bg-green-50 border-green-200 text-green-800'
+            : 'bg-red-50 border-red-200 text-red-800'
+        }`}>
+          {feedbackMessage.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -159,17 +258,27 @@ export const Users: React.FC = () => {
       {/* Filters */}
       <Card>
         <div className="flex items-center space-x-4">
-          <Select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            options={roleOptions}
-          />
-          <Button variant="outline" onClick={() => {
-            setSelectedRole('');
-            setPagination(prev => ({ ...prev, page: 1 }));
-          }}>
-            Clear Filters
+          <div className="min-w-[200px]">
+            <Select
+              value={selectedRole}
+              onChange={(e) => handleRoleFilterChange(e.target.value)}
+              options={roleOptions}
+              placeholder="Select role to filter"
+              disabled={filterLoading}
+            />
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={handleClearFilters}
+            disabled={filterLoading}
+          >
+            {filterLoading ? 'Filtering...' : 'Clear Filters'}
           </Button>
+          <div className="text-sm text-gray-500">
+            Current filter: "{selectedRole}" | 
+            Users shown: {users.length} | 
+            {selectedRole && selectedRole.trim() !== '' ? `Filtering by: ${selectedRole}` : 'Showing all users'}
+          </div>
         </div>
       </Card>
 
@@ -233,13 +342,15 @@ export const Users: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(user)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                      {(hasRole('ADMIN') || hasRole('MANAGER') || user._id === currentUser?._id) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(user)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      )}
                       
                       {hasRole('ADMIN') && (
                         <>

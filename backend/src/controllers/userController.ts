@@ -8,6 +8,10 @@ export const getUsers = async (req: Request, res: Response) => {
   const { page, limit } = getPaginationOptions(req.query);
   const { role } = req.query;
 
+  console.log('getUsers called with query params:', req.query);
+  console.log('Extracted role filter:', role);
+  console.log('Current user role:', req.user!.role);
+
   let filter: any = {};
 
   // Role-based filtering
@@ -22,6 +26,8 @@ export const getUsers = async (req: Request, res: Response) => {
     filter.role = role;
   }
 
+  console.log('Final filter object:', filter);
+
   const skip = (page - 1) * limit;
   const [users, total] = await Promise.all([
     User.find(filter)
@@ -32,6 +38,9 @@ export const getUsers = async (req: Request, res: Response) => {
       .sort({ createdAt: -1 }),
     User.countDocuments(filter),
   ]);
+
+  console.log('Found users count:', users.length);
+  console.log('Total users matching filter:', total);
 
   const result = createPaginationResult(users, total, page, limit);
 

@@ -19,7 +19,8 @@ import { formatCurrency, formatDate } from '../utils/format';
 
 export const Budgets: React.FC = () => {
   const { hasRole } = useAuth();
-  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [allBudgets, setAllBudgets] = useState<Budget[]>([]); // Store all budgets
+  const [budgets, setBudgets] = useState<Budget[]>([]); // Filtered budgets for display
   const [departments, setDepartments] = useState<Department[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +42,50 @@ export const Budgets: React.FC = () => {
 
   useEffect(() => {
     loadBudgets();
-  }, [searchTerm, selectedDepartment, selectedCategory, selectedStatus, pagination.page]);
+  }, []);
+
+  // Client-side filtering effect
+  useEffect(() => {
+    applyFilters();
+  }, [searchTerm, selectedDepartment, selectedCategory, selectedStatus, allBudgets]);
+
+  const applyFilters = () => {
+    let filtered = [...allBudgets];
+
+    // Search filter
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filtered = filtered.filter(budget =>
+        budget.name.toLowerCase().includes(search) ||
+        budget.departmentId?.name?.toLowerCase().includes(search) ||
+        budget.categoryId?.name?.toLowerCase().includes(search) ||
+        budget.ownerId?.name?.toLowerCase().includes(search)
+      );
+    }
+
+    // Department filter
+    if (selectedDepartment) {
+      filtered = filtered.filter(budget => budget.departmentId?._id === selectedDepartment);
+    }
+
+    // Category filter
+    if (selectedCategory) {
+      filtered = filtered.filter(budget => budget.categoryId?._id === selectedCategory);
+    }
+
+    // Status filter
+    if (selectedStatus) {
+      filtered = filtered.filter(budget => budget.status === selectedStatus);
+    }
+
+    setBudgets(filtered);
+    setPagination(prev => ({
+      ...prev,
+      total: filtered.length,
+      totalPages: Math.ceil(filtered.length / prev.limit),
+      page: 1
+    }));
+  };
 
   const loadDependencies = async () => {
     try {
@@ -59,23 +103,11 @@ export const Budgets: React.FC = () => {
   const loadBudgets = async () => {
     setLoading(true);
     try {
-      const params: any = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
-
-      if (searchTerm) params.search = searchTerm;
-      if (selectedDepartment) params.departmentId = selectedDepartment;
-      if (selectedCategory) params.categoryId = selectedCategory;
-      if (selectedStatus) params.status = selectedStatus;
-
-      const response: PaginatedResponse<Budget> = await budgetService.list(params);
-      setBudgets(response.data || []);
-      setPagination(prev => ({
-        ...prev,
-        total: response.total,
-        totalPages: response.totalPages,
-      }));
+      // Fetch all budgets without filters for client-side filtering
+      const response: PaginatedResponse<Budget> = await budgetService.list({ 
+        limit: 1000 // Get all budgets
+      });
+      setAllBudgets(response.data || []);
     } catch (error) {
       console.error('Failed to load budgets:', error);
     } finally {
@@ -167,7 +199,6 @@ export const Budgets: React.FC = () => {
             setSelectedDepartment('');
             setSelectedCategory('');
             setSelectedStatus('');
-            setPagination(prev => ({ ...prev, page: 1 }));
           }}>
             <Filter className="w-4 h-4 mr-2" />
             Clear
@@ -193,7 +224,9 @@ export const Budgets: React.FC = () => {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {budgets.map((budget) => {
+          {budgets
+            .slice((pagination.page - 1) * pagination.limit, pagination.page * pagination.limit)
+            .map((budget) => {
             const spentPercentage = (budget.spent / budget.amount) * 100;
             return (
               <Card key={budget._id} className="hover:shadow-md transition-shadow duration-200">
