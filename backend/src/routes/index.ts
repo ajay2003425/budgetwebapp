@@ -8,6 +8,7 @@ import { expensesRoutes } from './expenses.routes';
 import { approvalsRoutes } from './approvals.routes';
 import { analyticsRoutes } from './analytics.routes';
 import { uploadsRoutes } from './uploads.routes';
+import { notificationsRoutes } from './notifications.routes';
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use('/expenses', expensesRoutes);
 router.use('/approvals', approvalsRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/uploads', uploadsRoutes);
+router.use('/notifications', notificationsRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

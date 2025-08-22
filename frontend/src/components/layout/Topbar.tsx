@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, Bell, User } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getInitials } from '../../utils/format';
 import { Button } from '../ui/Button';
+import { NotificationDropdown } from '../notifications/NotificationDropdown';
+import { notificationService } from '../../services/notifications';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -10,6 +12,27 @@ interface TopbarProps {
 
 export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const response = await notificationService.getUnreadCount();
+        console.log('Unread count response:', response); // Debug log
+        setUnreadCount(response.unreadCount);
+      } catch (error) {
+        console.error('Failed to load unread count:', error);
+      }
+    };
+
+    if (user) {
+      loadUnreadCount();
+      
+      // Poll for unread count every 30 seconds
+      const interval = setInterval(loadUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -35,12 +58,11 @@ export const Topbar: React.FC<TopbarProps> = ({ onMenuClick }) => {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* Notification Bell */}
-          <button className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg relative">
-            <Bell className="w-5 h-5" />
-            {/* Notification badge */}
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
+          {/* Notification Dropdown */}
+          <NotificationDropdown
+            unreadCount={unreadCount}
+            onUnreadCountChange={setUnreadCount}
+          />
 
           {/* User Menu */}
           <div className="flex items-center space-x-3">

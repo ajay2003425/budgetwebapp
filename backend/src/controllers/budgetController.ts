@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { Budget } from '../models/Budget';
+import { User } from '../models/User';
 import { createError } from '../middleware/errorHandler';
 import { getPaginationOptions, createPaginationResult } from '../utils/pagination';
+import { notifyBudgetCreated } from '../utils/notifications';
 
 export const createBudget = async (req: Request, res: Response) => {
   const currentUser = req.user!;
@@ -23,6 +25,25 @@ export const createBudget = async (req: Request, res: Response) => {
     .populate('departmentId', 'name code')
     .populate('categoryId', 'name')
     .populate('ownerId', 'name email');
+
+  // Notify department users about new budget
+  try {
+    const departmentUsers = await User.find({
+      departmentId: budget.departmentId,
+      _id: { $ne: currentUser._id }, // Don't notify the creator
+      isActive: true
+    });
+
+    for (const user of departmentUsers) {
+      await notifyBudgetCreated(
+        user._id,
+        budget.name,
+        budget.amount
+      );
+    }
+  } catch (notificationError) {
+    console.error('Failed to send budget creation notifications:', notificationError);
+  }
 
   res.status(201).json({
     success: true,

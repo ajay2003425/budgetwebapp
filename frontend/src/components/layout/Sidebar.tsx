@@ -10,6 +10,7 @@ import {
   Tag,
   Users,
   Settings,
+  Bell,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -52,6 +53,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       name: 'Analytics',
       href: '/analytics',
       icon: BarChart3,
+      roles: ['ADMIN', 'MANAGER', 'USER'],
+    },
+    {
+      name: 'Notifications',
+      href: '/notifications',
+      icon: Bell,
       roles: ['ADMIN', 'MANAGER', 'USER'],
     },
     {

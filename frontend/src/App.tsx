@@ -14,6 +14,7 @@ import { Departments } from './pages/Departments';
 import { Categories } from './pages/Categories';
 import { Users } from './pages/Users';
 import { Profile } from './pages/Profile';
+import { Notifications } from './pages/Notifications';
 import { useAuth } from './context/AuthContext';
 import { Spinner } from './components/ui/Spinner';
 
@@ -54,6 +55,7 @@ function App() {
           } 
         />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route 
           path="/departments" 
           element={

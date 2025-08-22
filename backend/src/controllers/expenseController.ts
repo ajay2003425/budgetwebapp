@@ -2,9 +2,10 @@ import mongoose from 'mongoose';
 import { Request, Response } from 'express';
 import { Expense } from '../models/Expense';
 import { Budget } from '../models/Budget';
-import { Notification } from '../models/Notification';
+import { User } from '../models/User';
 import { createError } from '../middleware/errorHandler';
 import { getPaginationOptions, createPaginationResult } from '../utils/pagination';
+import { notifyExpenseApproved, notifyExpenseRejected, notifyPendingApproval } from '../utils/notifications';
 
 export const createExpense = async (req: Request, res: Response) => {
   const currentUser = req.user!;
@@ -19,6 +20,33 @@ export const createExpense = async (req: Request, res: Response) => {
   const populatedExpense = await Expense.findById(expense._id)
     .populate('budgetId', 'name departmentId categoryId')
     .populate('userId', 'name email');
+
+  // Notify managers about pending approval
+  try {
+    // Find managers in the same department or admins
+    const budget = await Budget.findById(expense.budgetId).populate('departmentId');
+    if (budget) {
+      const managers = await User.find({
+        $or: [
+          { role: 'ADMIN' },
+          { role: 'MANAGER', departmentId: (budget as any).departmentId._id }
+        ]
+      });
+
+      // Create notifications for managers
+      for (const manager of managers) {
+        await notifyPendingApproval(
+          manager._id,
+          currentUser.name,
+          expense.amount,
+          expense.description
+        );
+      }
+    }
+  } catch (notificationError) {
+    console.error('Failed to send approval notifications:', notificationError);
+    // Don't fail the request if notifications fail
+  }
 
   res.status(201).json({
     success: true,
@@ -158,14 +186,16 @@ export const approveExpense = async (req: Request, res: Response) => {
     budget.spent = (budget.spent || 0) + expense.amount;
     await budget.save();
 
-    // Create notification
-    const notification = new Notification({
-      userId: expense.userId,
-      title: 'Expense Approved',
-      message: `Your expense of $${expense.amount} has been approved.`,
-      type: 'INFO',
-    });
-    await notification.save();
+    // Create notification using helper function
+    try {
+      await notifyExpenseApproved(
+        expense.userId,
+        expense.amount,
+        budget.name
+      );
+    } catch (notificationError) {
+      console.error('Failed to send approval notification:', notificationError);
+    }
 
     // Fetch the updated expense with populated fields
     const updatedExpense = await Expense.findById(expenseIdToUse)
@@ -217,14 +247,18 @@ export const rejectExpense = async (req: Request, res: Response) => {
       throw createError('Expense is not pending approval', 400);
     }
 
-    // Create notification
-    const notification = new Notification({
-      userId: expense.userId,
-      title: 'Expense Rejected',
-      message: `Your expense of $${expense.amount} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
-      type: 'WARNING',
-    });
-    await notification.save();
+    // Create notification using helper function
+    try {
+      const budget = await Budget.findById(expense.budgetId);
+      await notifyExpenseRejected(
+        expense.userId,
+        expense.amount,
+        budget?.name || 'Unknown Budget',
+        reason
+      );
+    } catch (notificationError) {
+      console.error('Failed to send rejection notification:', notificationError);
+    }
 
     // Fetch the updated expense with populated fields
     const updatedExpense = await Expense.findById(expenseIdToUse)
