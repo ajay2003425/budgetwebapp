@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Search, Filter } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { budgetService } from '../services/budgets';
 import { departmentService } from '../services/departments';
 import { categoryService } from '../services/categories';
@@ -12,6 +13,8 @@ import { Select } from '../components/ui/Select';
 import { Tag } from '../components/ui/Tag';
 import { Spinner } from '../components/ui/Spinner';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Modal } from '../components/ui/Modal';
+import { BudgetForm } from '../components/budgets/BudgetForm';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export const Budgets: React.FC = () => {
@@ -24,6 +27,7 @@ export const Budgets: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -79,6 +83,11 @@ export const Budgets: React.FC = () => {
     }
   };
 
+  const handleBudgetCreated = () => {
+    setShowCreateForm(false);
+    loadBudgets();
+  };
+
   const getStatusColor = (status: string): 'success' | 'default' => {
     return status === 'ACTIVE' ? 'success' : 'default';
   };
@@ -114,7 +123,7 @@ export const Budgets: React.FC = () => {
           <p className="text-gray-600">Manage your budget allocations</p>
         </div>
         {hasRole(['ADMIN', 'MANAGER']) && (
-          <Button>
+          <Button onClick={() => setShowCreateForm(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Create Budget
           </Button>
@@ -178,7 +187,7 @@ export const Budgets: React.FC = () => {
           action={
             hasRole(['ADMIN', 'MANAGER']) ? {
               label: 'Create Budget',
-              onClick: () => {/* Handle create */}
+              onClick: () => setShowCreateForm(true)
             } : undefined
           }
         />
@@ -228,9 +237,11 @@ export const Budgets: React.FC = () => {
                     <span className="text-sm text-gray-500">
                       Owner: {budget.ownerId?.name}
                     </span>
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
+                    <Link to={`/budgets/${budget._id}`}>
+                      <Button variant="outline" size="sm">
+                        View Details
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </Card>
@@ -261,6 +272,19 @@ export const Budgets: React.FC = () => {
           </Button>
         </div>
       )}
+      
+      {/* Create Budget Modal */}
+      <Modal
+        isOpen={showCreateForm}
+        onClose={() => setShowCreateForm(false)}
+        title="Create New Budget"
+        size="xl"
+      >
+        <BudgetForm
+          onSuccess={handleBudgetCreated}
+          onCancel={() => setShowCreateForm(false)}
+        />
+      </Modal>
     </div>
   );
 };
