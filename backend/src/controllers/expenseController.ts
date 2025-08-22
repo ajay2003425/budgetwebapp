@@ -115,50 +115,60 @@ export const updateExpense = async (req: Request, res: Response) => {
 };
 
 export const approveExpense = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id, expenseId } = req.params;
+  const expenseIdToUse = expenseId || id; // Handle both route patterns
   const currentUser = req.user!;
 
-  const session = await mongoose.startSession();
-  
   try {
-    await session.withTransaction(async () => {
-      // Get expense and lock it
-      const expense = await Expense.findById(id).session(session);
-      if (!expense) {
+    // Atomically update the expense status from PENDING to APPROVED
+    const expense = await Expense.findOneAndUpdate(
+      { _id: expenseIdToUse, status: 'PENDING' },
+      { 
+        status: 'APPROVED',
+        approvedBy: currentUser._id,
+        approvedAt: new Date()
+      },
+      { new: false } // Return the original document to check if it was pending
+    );
+
+    if (!expense) {
+      // Either expense doesn't exist or it's not in PENDING status
+      const existingExpense = await Expense.findById(expenseIdToUse);
+      if (!existingExpense) {
         throw createError('Expense not found', 404);
       }
-
-      if (expense.status !== 'PENDING') {
-        throw createError('Expense is not pending approval', 400);
+      if (existingExpense.status === 'APPROVED') {
+        // Return success if already approved (idempotent)
+        return res.json({
+          success: true,
+          message: 'Expense was already approved',
+          data: existingExpense,
+        });
       }
+      throw createError('Expense is not pending approval', 400);
+    }
 
-      // Get budget and update spent amount
-      const budget = await Budget.findById(expense.budgetId).session(session);
-      if (!budget) {
-        throw createError('Budget not found', 404);
-      }
+    // Get budget and update spent amount
+    const budget = await Budget.findById(expense.budgetId);
+    if (!budget) {
+      throw createError('Budget not found', 404);
+    }
 
-      // Update expense status
-      expense.status = 'APPROVED';
-      expense.approvedBy = currentUser._id;
-      expense.approvedAt = new Date();
-      await expense.save({ session });
+    // Update budget spent amount
+    budget.spent = (budget.spent || 0) + expense.amount;
+    await budget.save();
 
-      // Update budget spent amount
-      budget.spent += expense.amount;
-      await budget.save({ session });
-
-      // Create notification
-      const notification = new Notification({
-        userId: expense.userId,
-        title: 'Expense Approved',
-        message: `Your expense of $${expense.amount} has been approved.`,
-        type: 'INFO',
-      });
-      await notification.save({ session });
+    // Create notification
+    const notification = new Notification({
+      userId: expense.userId,
+      title: 'Expense Approved',
+      message: `Your expense of $${expense.amount} has been approved.`,
+      type: 'INFO',
     });
+    await notification.save();
 
-    const updatedExpense = await Expense.findById(id)
+    // Fetch the updated expense with populated fields
+    const updatedExpense = await Expense.findById(expenseIdToUse)
       .populate('budgetId', 'name departmentId categoryId')
       .populate('userId', 'name email')
       .populate('approvedBy', 'name email');
@@ -169,47 +179,55 @@ export const approveExpense = async (req: Request, res: Response) => {
     });
   } catch (error) {
     throw error;
-  } finally {
-    await session.endSession();
   }
 };
 
 export const rejectExpense = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const { id, expenseId } = req.params;
+  const expenseIdToUse = expenseId || id; // Handle both route patterns
   const { reason } = req.body;
   const currentUser = req.user!;
 
-  const session = await mongoose.startSession();
-  
   try {
-    await session.withTransaction(async () => {
-      // Get expense and lock it
-      const expense = await Expense.findById(id).session(session);
-      if (!expense) {
+    // Atomically update the expense status from PENDING to REJECTED
+    const expense = await Expense.findOneAndUpdate(
+      { _id: expenseIdToUse, status: 'PENDING' },
+      { 
+        status: 'REJECTED',
+        approvedBy: currentUser._id,
+        approvedAt: new Date()
+      },
+      { new: false } // Return the original document to check if it was pending
+    );
+
+    if (!expense) {
+      // Either expense doesn't exist or it's not in PENDING status
+      const existingExpense = await Expense.findById(expenseIdToUse);
+      if (!existingExpense) {
         throw createError('Expense not found', 404);
       }
-
-      if (expense.status !== 'PENDING') {
-        throw createError('Expense is not pending approval', 400);
+      if (existingExpense.status === 'REJECTED') {
+        // Return success if already rejected (idempotent)
+        return res.json({
+          success: true,
+          message: 'Expense was already rejected',
+          data: existingExpense,
+        });
       }
+      throw createError('Expense is not pending approval', 400);
+    }
 
-      // Update expense status
-      expense.status = 'REJECTED';
-      expense.approvedBy = currentUser._id;
-      expense.approvedAt = new Date();
-      await expense.save({ session });
-
-      // Create notification
-      const notification = new Notification({
-        userId: expense.userId,
-        title: 'Expense Rejected',
-        message: `Your expense of $${expense.amount} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
-        type: 'WARNING',
-      });
-      await notification.save({ session });
+    // Create notification
+    const notification = new Notification({
+      userId: expense.userId,
+      title: 'Expense Rejected',
+      message: `Your expense of $${expense.amount} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
+      type: 'WARNING',
     });
+    await notification.save();
 
-    const updatedExpense = await Expense.findById(id)
+    // Fetch the updated expense with populated fields
+    const updatedExpense = await Expense.findById(expenseIdToUse)
       .populate('budgetId', 'name departmentId categoryId')
       .populate('userId', 'name email')
       .populate('approvedBy', 'name email');
@@ -220,7 +238,5 @@ export const rejectExpense = async (req: Request, res: Response) => {
     });
   } catch (error) {
     throw error;
-  } finally {
-    await session.endSession();
   }
 };

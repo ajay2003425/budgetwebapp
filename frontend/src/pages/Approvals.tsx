@@ -54,8 +54,14 @@ export const Approvals: React.FC = () => {
     try {
       await approvalService.approve(expenseId);
       loadApprovals();
-    } catch (error) {
+      // Show success message if you have a toast/notification system
+    } catch (error: any) {
       console.error('Failed to approve expense:', error);
+      // If the expense was already approved, just reload
+      if (error?.response?.data?.message?.includes('already approved')) {
+        loadApprovals();
+      }
+      // You might want to show an error message to the user here
     } finally {
       setActionLoading(null);
     }
@@ -71,8 +77,17 @@ export const Approvals: React.FC = () => {
       setSelectedExpense(null);
       setRejectReason('');
       loadApprovals();
-    } catch (error) {
+      // Show success message if you have a toast/notification system
+    } catch (error: any) {
       console.error('Failed to reject expense:', error);
+      // If the expense was already rejected, just reload and close modal
+      if (error?.response?.data?.message?.includes('already rejected')) {
+        setShowRejectModal(false);
+        setSelectedExpense(null);
+        setRejectReason('');
+        loadApprovals();
+      }
+      // You might want to show an error message to the user here
     } finally {
       setActionLoading(null);
     }
