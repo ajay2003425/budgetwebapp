@@ -284,7 +284,7 @@ export const Expenses: React.FC = () => {
         size="lg"
       >
         <ExpenseForm
-          budgetId={selectedBudget || budgets[0]?._id || ''}
+          budgetId={selectedBudget || undefined}
           onSuccess={handleExpenseCreated}
           onCancel={() => setShowExpenseForm(false)}
         />

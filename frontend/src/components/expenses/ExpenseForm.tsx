@@ -1,28 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { expenseService } from '../../services/expenses';
+import { budgetService } from '../../services/budgets';
 import { uploadService } from '../../services/uploads';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
 import { FileDropzone } from '../ui/FileDropzone';
+import { Budget } from '../../types';
 
 interface ExpenseFormProps {
-  budgetId: string;
+  budgetId?: string; // Make optional since user will select
   onSuccess: () => void;
   onCancel: () => void;
 }
 
 interface ExpenseFormData {
+  budgetId: string;
   amount: number;
   description: string;
 }
 
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({
-  budgetId,
+  budgetId: initialBudgetId,
   onSuccess,
   onCancel,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [budgetsLoading, setBudgetsLoading] = useState(true);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string>('');
   const [uploadError, setUploadError] = useState<string>('');
@@ -32,7 +38,28 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     handleSubmit,
     formState: { errors },
     setError,
-  } = useForm<ExpenseFormData>();
+    watch,
+  } = useForm<ExpenseFormData>({
+    defaultValues: {
+      budgetId: initialBudgetId || '',
+    }
+  });
+
+  useEffect(() => {
+    loadBudgets();
+  }, []);
+
+  const loadBudgets = async () => {
+    setBudgetsLoading(true);
+    try {
+      const response = await budgetService.list({ limit: 100 });
+      setBudgets(response.data || []);
+    } catch (error) {
+      console.error('Failed to load budgets:', error);
+    } finally {
+      setBudgetsLoading(false);
+    }
+  };
 
   const handleFileSelect = async (file: File) => {
     setUploadError('');
@@ -58,7 +85,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     setLoading(true);
     try {
       await expenseService.create({
-        budgetId,
+        budgetId: data.budgetId,
         amount: Number(data.amount),
         description: data.description,
         receiptUrl: receiptUrl || undefined,
@@ -72,8 +99,46 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     }
   };
 
+  const budgetOptions = budgets.map(budget => ({
+    value: budget._id,
+    label: `${budget.name} - ${budget.departmentId?.name || 'No Department'} (${budget.categoryId?.name || 'No Category'})`
+  }));
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Budget Selection */}
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-gray-700">
+          Budget / Department *
+        </label>
+        {budgetsLoading ? (
+          <div className="p-3 border border-gray-300 rounded-lg bg-gray-50">
+            <span className="text-gray-500">Loading budgets...</span>
+          </div>
+        ) : budgets.length === 0 ? (
+          <div className="p-3 border border-red-300 rounded-lg bg-red-50">
+            <span className="text-red-600">No budgets available. Please contact your administrator.</span>
+          </div>
+        ) : (
+          <select
+            className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+            {...register('budgetId', {
+              required: 'Please select a budget',
+            })}
+          >
+            <option value="">Select a budget...</option>
+            {budgetOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {errors.budgetId && (
+          <p className="text-sm text-red-600">{errors.budgetId.message}</p>
+        )}
+      </div>
+
       <Input
         label="Amount"
         type="number"
