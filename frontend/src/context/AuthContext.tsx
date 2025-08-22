@@ -34,11 +34,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const initializeAuth = async () => {
+    // Skip auth check if already on login page
+    if (window.location.pathname.includes('/login')) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const currentUser = await authService.me();
       setUser(currentUser);
     } catch (error) {
       console.log('Not authenticated');
+      // Don't redirect here - let the API interceptor handle it
     } finally {
       setLoading(false);
     }

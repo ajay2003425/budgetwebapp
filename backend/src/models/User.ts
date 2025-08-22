@@ -73,7 +73,7 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
 // Static method for safe user data
 userSchema.statics.safeUser = function (user: IUser): SafeUser {
   return {
-    _id: user._id,
+    _id: user._id as mongoose.Types.ObjectId,
     name: user.name,
     email: user.email,
     role: user.role,

@@ -30,8 +30,10 @@ class ApiService {
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config as any;
+        const isRefreshEndpoint = originalRequest.url?.includes('/auth/refresh');
+        const isLoginEndpoint = originalRequest.url?.includes('/auth/login');
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && !isRefreshEndpoint && !isLoginEndpoint) {
           originalRequest._retry = true;
 
           try {
@@ -46,8 +48,20 @@ class ApiService {
             return this.api(originalRequest);
           } catch (refreshError) {
             this.clearAccessToken();
-            window.location.href = '/login';
+            // Only redirect if not already on login page
+            if (!window.location.pathname.includes('/login')) {
+              window.location.href = '/login';
+            }
             return Promise.reject(refreshError);
+          }
+        }
+
+        // If refresh endpoint fails, clear token and redirect
+        if (error.response?.status === 401 && isRefreshEndpoint) {
+          this.clearAccessToken();
+          // Only redirect if not already on login page
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
           }
         }
 

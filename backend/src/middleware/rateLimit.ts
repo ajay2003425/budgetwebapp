@@ -1,8 +1,8 @@
 import rateLimit from 'express-rate-limit';
 
 export const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100000, // 100,000 attempts per window
   message: {
     success: false,
     message: 'Too many authentication attempts, please try again later',
@@ -23,8 +23,8 @@ export const uploadRateLimit = rateLimit({
 });
 
 export const generalRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // 1000 requests per window
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100000, // 100,000 requests per window (for development)
   message: {
     success: false,
     message: 'Too many requests, please try again later',
