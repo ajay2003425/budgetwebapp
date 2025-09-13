@@ -16,6 +16,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Modal } from '../components/ui/Modal';
 import { BudgetForm } from '../components/budgets/BudgetForm';
 import { formatCurrency, formatDate } from '../utils/format';
+import { MobileCardItem } from '../components/ui/MobileCard';
 
 export const Budgets: React.FC = () => {
   const { hasRole } = useAuth();
@@ -149,7 +150,7 @@ export const Budgets: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Budgets</h1>
           <p className="text-gray-600">Manage your budget allocations</p>
@@ -164,8 +165,8 @@ export const Budgets: React.FC = () => {
 
       {/* Filters */}
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="relative lg:col-span-2">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
               type="text"

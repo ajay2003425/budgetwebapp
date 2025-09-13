@@ -137,7 +137,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
           {/* Header */}
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -152,7 +152,8 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                   className="text-xs"
                 >
                   <Check className="w-3 h-3 mr-1" />
-                  Mark all read
+                  <span className="hidden sm:inline">Mark all read</span>
+                  <span className="sm:hidden">Read all</span>
                 </Button>
               )}
             </div>

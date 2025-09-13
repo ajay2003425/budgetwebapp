@@ -14,6 +14,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { Modal } from '../components/ui/Modal';
 import { UserForm } from '../components/users/UserForm';
 import { formatDate, getInitials } from '../utils/format';
+import { MobileCardItem } from '../components/ui/MobileCard';
 
 export const Users: React.FC = () => {
   const { hasRole, user: currentUser } = useAuth();
@@ -242,7 +243,7 @@ export const Users: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-600">Manage user accounts and permissions</p>
@@ -257,8 +258,8 @@ export const Users: React.FC = () => {
 
       {/* Filters */}
       <Card>
-        <div className="flex items-center space-x-4">
-          <div className="min-w-[200px]">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="min-w-[200px] flex-shrink-0">
             <Select
               value={selectedRole}
               onChange={(e) => handleRoleFilterChange(e.target.value)}
@@ -271,10 +272,11 @@ export const Users: React.FC = () => {
             variant="outline" 
             onClick={handleClearFilters}
             disabled={filterLoading}
+            className="sm:flex-shrink-0"
           >
             {filterLoading ? 'Filtering...' : 'Clear Filters'}
           </Button>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 break-words">
             Current filter: "{selectedRole}" | 
             Users shown: {users.length} | 
             {selectedRole && selectedRole.trim() !== '' ? `Filtering by: ${selectedRole}` : 'Showing all users'}
@@ -298,97 +300,207 @@ export const Users: React.FC = () => {
           } : undefined}
         />
       ) : (
-        <Card padding={false}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user._id}>
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                        {getInitials(user.name)}
+        <>
+          {/* Desktop Table */}
+          <div className="hidden md:block">
+            <Card padding={false}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user._id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                          {getInitials(user.name)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{user.name}</p>
+                          <p className="text-sm text-gray-500">{user.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                    </TableCell>
+                    <TableCell>
+                      <Tag variant={getRoleColor(user.role)}>
+                        {user.role}
+                      </Tag>
+                    </TableCell>
+                    <TableCell>
+                      {getDepartmentName(user.departmentId)}
+                    </TableCell>
+                    <TableCell>
+                      <Tag variant={user.isActive ? 'success' : 'danger'}>
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </Tag>
+                    </TableCell>
+                    <TableCell>
+                      {formatDate(user.createdAt)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        {(hasRole('ADMIN') || hasRole('MANAGER') || user._id === currentUser?._id) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(user)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {hasRole('ADMIN') && (
+                          <>
+                            {user.isActive ? (
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDeactivate(user._id)}
+                                loading={actionLoading === user._id}
+                                disabled={actionLoading !== null}
+                              >
+                                <UserX className="w-4 h-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="success"
+                                size="sm"
+                                onClick={() => handleActivate(user._id)}
+                                loading={actionLoading === user._id}
+                                disabled={actionLoading !== null}
+                              >
+                                <UserCheck className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </>
+                        )}
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="flex justify-center space-x-2 p-6">
+                <Button
+                  variant="outline"
+                  disabled={pagination.page === 1}
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-4 py-2 text-sm text-gray-600">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={pagination.page === pagination.totalPages}
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="block md:hidden space-y-4">
+          {users.map((user) => (
+            <MobileCardItem key={user._id}>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      {getInitials(user.name)}
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Tag variant={getRoleColor(user.role)}>
+                    <div>
+                      <p className="font-medium text-gray-900">{user.name}</p>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                    </div>
+                  </div>
+                  <Tag variant={user.isActive ? 'success' : 'danger'} size="sm">
+                    {user.isActive ? 'Active' : 'Inactive'}
+                  </Tag>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-500">Role:</span>
+                    <Tag variant={getRoleColor(user.role)} size="sm" className="ml-2">
                       {user.role}
                     </Tag>
-                  </TableCell>
-                  <TableCell>
-                    {getDepartmentName(user.departmentId)}
-                  </TableCell>
-                  <TableCell>
-                    <Tag variant={user.isActive ? 'success' : 'danger'}>
-                      {user.isActive ? 'Active' : 'Inactive'}
-                    </Tag>
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(user.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      {(hasRole('ADMIN') || hasRole('MANAGER') || user._id === currentUser?._id) && (
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Department:</span>
+                    <span className="ml-2 text-gray-900">{getDepartmentName(user.departmentId)}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Created:</span>
+                    <span className="ml-2 text-gray-900">{formatDate(user.createdAt)}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                  {(hasRole('ADMIN') || hasRole('MANAGER') || user._id === currentUser?._id) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(user)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                  
+                  {hasRole('ADMIN') && (
+                    <>
+                      {user.isActive ? (
                         <Button
-                          variant="outline"
+                          variant="danger"
                           size="sm"
-                          onClick={() => handleEdit(user)}
+                          onClick={() => handleDeactivate(user._id)}
+                          loading={actionLoading === user._id}
+                          disabled={actionLoading !== null}
                         >
-                          <Edit className="w-4 h-4" />
+                          <UserX className="w-4 h-4 mr-2" />
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="success"
+                          size="sm"
+                          onClick={() => handleActivate(user._id)}
+                          loading={actionLoading === user._id}
+                          disabled={actionLoading !== null}
+                        >
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Activate
                         </Button>
                       )}
-                      
-                      {hasRole('ADMIN') && (
-                        <>
-                          {user.isActive ? (
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              onClick={() => handleDeactivate(user._id)}
-                              loading={actionLoading === user._id}
-                              disabled={actionLoading !== null}
-                            >
-                              <UserX className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="success"
-                              size="sm"
-                              onClick={() => handleActivate(user._id)}
-                              loading={actionLoading === user._id}
-                              disabled={actionLoading !== null}
-                            >
-                              <UserCheck className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </>
+                  )}
+                </div>
+              </div>
+            </MobileCardItem>
+          ))}
 
-          {/* Pagination */}
+          {/* Mobile Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex justify-center space-x-2 p-6">
+            <div className="flex justify-center space-x-2 pt-4">
               <Button
                 variant="outline"
+                size="sm"
                 disabled={pagination.page === 1}
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
               >
@@ -399,6 +511,7 @@ export const Users: React.FC = () => {
               </span>
               <Button
                 variant="outline"
+                size="sm"
                 disabled={pagination.page === pagination.totalPages}
                 onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
               >
@@ -406,7 +519,8 @@ export const Users: React.FC = () => {
               </Button>
             </div>
           )}
-        </Card>
+        </div>
+        </>
       )}
 
       {/* User Form Modal */}

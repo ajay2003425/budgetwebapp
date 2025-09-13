@@ -115,7 +115,7 @@ export const BudgetDetail: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Link to="/budgets">
             <Button variant="outline" size="sm">
@@ -130,7 +130,8 @@ export const BudgetDetail: React.FC = () => {
         </div>
         <Button onClick={() => setShowExpenseForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Expense
+          <span className="hidden sm:inline">Add Expense</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
@@ -300,7 +301,7 @@ export const BudgetDetail: React.FC = () => {
                       <TableCell>
                         {expense.receiptUrl ? (
                           <a
-                            href={`${import.meta.env.VITE_API_BASE_URL}${expense.receiptUrl}`}
+                            href={`${(import.meta as any).env.VITE_API_BASE_URL}${expense.receiptUrl}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-800"

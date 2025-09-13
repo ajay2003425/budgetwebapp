@@ -57,12 +57,42 @@ export const createExpense = async (req: Request, res: Response) => {
 export const getExpenses = async (req: Request, res: Response) => {
   const { page, limit } = getPaginationOptions(req.query);
   const { budgetId, userId, status } = req.query;
+  const currentUser = req.user!;
 
   let filter: any = {};
 
-  // Apply filters
-  if (budgetId) filter.budgetId = budgetId;
-  if (userId) filter.userId = userId;
+  // Apply role-based filtering
+  if (currentUser.role === 'USER') {
+    // Regular users can only see their own expenses
+    filter.userId = currentUser._id;
+  } else if (currentUser.role === 'MANAGER') {
+    // Managers can see expenses from their department's budgets
+    const departmentBudgets = await Budget.find({ 
+      departmentId: currentUser.departmentId 
+    }).select('_id');
+    
+    const budgetIds = departmentBudgets.map((budget: any) => budget._id);
+    
+    if (budgetId) {
+      // If specific budget filter is applied, make sure it's from manager's department
+      if (budgetIds.some((id: any) => id.toString() === budgetId)) {
+        filter.budgetId = budgetId;
+      } else {
+        // Budget is not from manager's department, return empty result
+        filter.budgetId = { $in: [] }; // This will match no documents
+      }
+    } else {
+      filter.budgetId = { $in: budgetIds };
+    }
+  } else {
+    // ADMINs can see all expenses, apply filters normally
+    if (budgetId) filter.budgetId = budgetId;
+  }
+
+  // Apply additional filters (these work for all roles)
+  if (userId && currentUser.role !== 'USER') { // Users can only see their own expenses
+    filter.userId = userId;
+  }
   if (status) filter.status = status;
 
   const skip = (page - 1) * limit;

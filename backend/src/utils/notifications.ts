@@ -2,6 +2,14 @@ import { Notification } from '../models/Notification';
 import { User } from '../models/User';
 import mongoose from 'mongoose';
 
+// Helper function to format currency in Indian Rupees
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+  }).format(amount);
+};
+
 export interface CreateNotificationParams {
   userId: string | mongoose.Types.ObjectId;
   title: string;
@@ -35,7 +43,7 @@ export const notifyExpenseApproved = async (
   return createNotification({
     userId,
     title: 'Expense Approved',
-    message: `Your expense of $${amount} for ${budgetName} has been approved.`,
+    message: `Your expense of ${formatCurrency(amount)} for ${budgetName} has been approved.`,
     type: 'INFO',
   });
 };
@@ -49,7 +57,7 @@ export const notifyExpenseRejected = async (
   return createNotification({
     userId,
     title: 'Expense Rejected',
-    message: `Your expense of $${amount} for ${budgetName} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
+    message: `Your expense of ${formatCurrency(amount)} for ${budgetName} has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
     type: 'WARNING',
   });
 };
@@ -62,7 +70,7 @@ export const notifyBudgetCreated = async (
   return createNotification({
     userId,
     title: 'New Budget Created',
-    message: `A new budget "${budgetName}" with $${amount} has been created for your department.`,
+    message: `A new budget "${budgetName}" with ${formatCurrency(amount)} has been created for your department.`,
     type: 'INFO',
   });
 };
@@ -101,7 +109,7 @@ export const notifyPendingApproval = async (
   return createNotification({
     userId: managerId,
     title: 'Expense Awaiting Approval',
-    message: `${userName} submitted an expense of $${amount} for "${description}" that requires your approval.`,
+    message: `${userName} submitted an expense of ${formatCurrency(amount)} for "${description}" that requires your approval.`,
     type: 'ACTION',
   });
 };

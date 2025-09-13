@@ -9,9 +9,11 @@ interface TableProps {
 export const Table: React.FC<TableProps> = ({ children, className }) => {
   return (
     <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg">
-      <table className={clsx('min-w-full divide-y divide-gray-300', className)}>
-        {children}
-      </table>
+      <div className="overflow-x-auto">
+        <table className={clsx('min-w-full divide-y divide-gray-300', className)}>
+          {children}
+        </table>
+      </div>
     </div>
   );
 };

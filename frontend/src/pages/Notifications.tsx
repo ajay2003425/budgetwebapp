@@ -153,7 +153,7 @@ export const Notifications: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             Notifications
@@ -162,7 +162,7 @@ export const Notifications: React.FC = () => {
             {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Button
             variant="outline"
             onClick={handleRefresh}
@@ -186,8 +186,8 @@ export const Notifications: React.FC = () => {
 
       {/* Filters */}
       <Card className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="relative lg:col-span-2">
             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <Input
               type="text"
