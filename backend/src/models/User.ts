@@ -67,7 +67,6 @@ const userSchema = new Schema<IUser>(
 );
 
 // Indexes
-userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ role: 1 });
 
 // Instance method
