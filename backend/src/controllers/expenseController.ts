@@ -36,7 +36,7 @@ export const createExpense = async (req: Request, res: Response) => {
       // Create notifications for managers
       for (const manager of managers) {
         await notifyPendingApproval(
-          manager._id,
+          manager._id as mongoose.Types.ObjectId,
           currentUser.name,
           expense.amount,
           expense.description

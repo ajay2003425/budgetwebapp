@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
   passwordHash: string;
@@ -11,6 +12,10 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+export interface IUserModel extends mongoose.Model<IUser> {
+  safeUser(user: IUser): SafeUser;
 }
 
 export interface SafeUser {
@@ -83,4 +88,4 @@ userSchema.statics.safeUser = function (user: IUser): SafeUser {
   };
 };
 
-export const User = mongoose.model<IUser>('User', userSchema);
+export const User = mongoose.model<IUser, IUserModel>('User', userSchema);

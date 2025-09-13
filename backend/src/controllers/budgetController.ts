@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { Budget } from '../models/Budget';
 import { User } from '../models/User';
 import { createError } from '../middleware/errorHandler';
@@ -36,7 +37,7 @@ export const createBudget = async (req: Request, res: Response) => {
 
     for (const user of departmentUsers) {
       await notifyBudgetCreated(
-        user._id,
+        user._id as mongoose.Types.ObjectId,
         budget.name,
         budget.amount
       );
