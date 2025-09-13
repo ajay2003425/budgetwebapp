@@ -20,7 +20,20 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Normalize the origin by removing trailing slash
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const allowedOrigin = env.CORS_ORIGIN.replace(/\/$/, '');
+
+    if (normalizedOrigin === allowedOrigin) {
+      return callback(null, true);
+    }
+
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
